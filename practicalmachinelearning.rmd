@@ -1,5 +1,5 @@
 ---
-output: html_document
+output: word_document
 ---
 # Assessment : How to exercise efficiently ? 
 
@@ -23,7 +23,7 @@ Random Number Generation
 ========
 Integer vector, containing the random number generator (RNG) state for random number generation in R
 ```{r}
-set.seed(11111)
+set.seed(12345)
 ```
 
 Dataset
@@ -40,6 +40,8 @@ https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
 The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. 
 
 Download both training dataset :-
+
+
 ```{r}
 curdir <-getwd()
 file.url<-'http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv'
@@ -51,26 +53,30 @@ download.file(file.url,destfile=paste(curdir,'/pml-testing.csv',sep=""))
 
 ```
 
-Load both dataset :-
-
+Load both dataset and change the missing value "#DIV/0!" to "NA" . 
 ```{r}
-train <- read.csv(paste(curdir,'/pml-training.csv',sep=""),na.strings=c("NA","#DIV/0!",""))
-test <-read.csv(paste(curdir,'/pml-testing.csv',sep=""),na.strings=c("NA","#DIV/0!",""))
+training <-read.csv(paste(curdir,'/pml-training.csv',sep=""),na.strings=c("NA","#DIV/0!",""))
+testing <-read.csv(paste(curdir,'/pml-testing.csv',sep=""), na.strings=c("NA","#DIV/0!", ""))
 ```
 
+Delete column which has missing values.
+```{r}
+training<-training[,colSums(is.na(training)) == 0]
+testing <-testing[,colSums(is.na(testing)) == 0]
+```
 
 Cheking the dimension of training and test dataset :-
 
 ```{r}
-dim(train)
-dim(test)
+dim(training)
+dim(testing)
 ```
 
 Checking the columns which have all missing values
 
 ```{r}
-train<-train[,colSums(is.na(train)) == 0]
-test <-test[,colSums(is.na(test)) == 0]
+training   <-training[,-c(1:7)]
+testing <-testing[,-c(1:7)]
 ```
 
 We remove 6 of the variables which is irrelevant like :-
@@ -91,22 +97,22 @@ f)  num_window
 which resides on the column 1-7.
 
 ```{r}
-train <-train[,-c(1:7)]
-test <-test[,-c(1:7)]
+training   <-training[,-c(1:7)]
+testing <-testing[,-c(1:7)]
 ```
 
 Check again the dimension
 
 ```{r}
-dim(train)
-dim(test)
+dim(training)
+dim(testing)
 ```
 
 Now we obtain the several rows to preview
 
 ```{r}
-head(train)
-head(test)
+head(training)
+head(testing)
 ```
 
 In order to run cross-validation , the training dataset need to partition into 2 sets . We set the 1st partition for training dataset to 75% and test dataset to 25%. Training dataset contains 53 variables with 19622 obs and test dataset contains 53 variables with 20 obs.
@@ -115,11 +121,11 @@ This will do the randomize sub-sampling without replacement
 
 
 ```{r}
-PartTrain <- createDataPartition(y=train$classe, p=0.75, list=FALSE)
-train_part <- train[PartTrain, ]; 
-test_part <- train[-PartTrain, ]
-dim(train_part)
-dim(test_part)
+chunks <- createDataPartition(y=training$classe, p=0.75, list=FALSE)
+chunks_training <- training[chunks, ]; 
+chunks_testing <- training[-chunks, ]
+dim(chunks_training); 
+dim(chunks_testing);
 
 ```
 
@@ -129,9 +135,7 @@ We try to plot into the histogram to see the trending frequency of each sub-trai
 
 
 ```{r}
-plot(train_part$classe, col="lightgreen", 
-main="( train_part ) - Classe vs. Frequency", 
-xlab="Classe", ylab="Frequency")
+plot(chunks_training$classe, col="lightgreen", main="Bar Plot Classe vs. Frequency ", xlab="Classe", ylab="Frequency")
 ```
 
 The graph above shows that A ~ 4000x occurrences is most frequent while D is the lest frequent ~ 2500x occurrences
@@ -142,33 +146,32 @@ Decision Tree
 Decision Tree machine learning algorithm as a support tool that uses a tree-like graph or model of decisions and their possible consequences, including chance event outcomes, resource costs, and utility.
 
 ```{r}
-fit_model <- rpart(classe ~ ., data=train_part, method="class")
-fit_model
+Fit_Model_1 <- rpart(classe ~ ., data=chunks_training, method="class")
 ```
 
 Displays the (Complexity) cp table for fitted model  .
 
 ```{r}
-printcp(fit_model)
+printcp(Fit_Model_1)
 ```
 
 To visualize the decision tree , we use this fancyRpartPlot command below :-
 
 ```{r}
-fancyRpartPlot(fit_model,main="Decision Tree Model")
+fancyRpartPlot(Fit_Model_1,main="Classification Tree")
 ```
 
 Green nodes represent individuals classified by the tree as A, blue nodes are those classified as B and orange nodes are classified as C. The gradient is a visual representation of the three numbers in the middle of the nodes: bearing in mind that levels of a factor are by default in alphabetical order, the first of these three numbers is the proportion of individuals in that node that were actually classified as the first level, (A), in train_part ; the second number is the proportion that were actually classified as B, and the third the proportion that were C.
 
 
 ```{r}
-rpart.plot(fit_model,main="Classification Tree Model", under=TRUE, faclen=1)
+rpart.plot(Fit_Model_1,main="Classification Tree",extra=102, under=TRUE, faclen=0)
 ```
 
 Now we predict the fit model for test dataset . 
 
 ```{r}
-model_predictions <- predict(fit_model, test_part, type = "class")
+Prediction_Model1 <- predict(Fit_Model_1, chunks_testing, type = "class")
 ```
 
 Confusion Matrix
@@ -176,7 +179,7 @@ Confusion Matrix
 Confusion matrix, also known as a contingency table or an error matrix , is a specific table layout that allows visualization of the performance of an algorithm, typically a supervised learning one (in unsupervised learning it is usually called a matching matrix). Each column of the matrix represents the instances in a predicted class while each row represents the instances in an actual class (or vice-versa).
 
 ```{r}
-confusionMatrix(model_predictions, test_part$classe)
+confusionMatrix(Prediction_Model1, chunks_testing$classe)
 ```
 
 Random Forest
@@ -184,25 +187,29 @@ Random Forest
 Random forests are an ensemble learning method for classification, regression and other tasks, that operate by constructing a multitude of decision trees at training time and outputting the class that is the mode of the classes (classification) or mean prediction (regression) of the individual trees. Random forests correct for decision trees' habit of overfitting to their training set.
 
 ```{r}
-fit_model2 <- randomForest(classe ~. , data=train_part)
+Fit_Model_2 <- randomForest(classe ~. , data=chunks_training)
 ```
 
 Now we predict the fit model for test dataset . 
 
 ```{r}
-model_predictions2 <- predict(fit_model2, test_part, type = "class")
+Prediction_Model2 <- predict(Fit_Model_2, chunks_testing, type = "class")
 ```
 
 Below is the confusion matrix of the test results 
 
 ```{r}
-confusionMatrix(model_predictions2, test_part$classe)
+confusionMatrix(Prediction_Model2, chunks_testing$classe)
 ```
 
 
 Conclusion
 ============
-From the machine learning method above , the accuracy of the Decision Tree is 75.9%  and the Random Forest is 99.6% which is better.
+From the machine learning method above , the cross validation accuracy of the Decision Tree is ~ 66.17%  and the Random Forest is ~ 99.3% which is better and the sample error rate rather small around ~ 0.07% .
+
+```{r}
+Final_Prediction <- predict(Fit_Model_2, testing, type = "class")
+```
 
 Random Forests generally needs larger number of instances to work its randomization concept well and generalize to the novel data. In addition, in one way or another, random forests works with combination of some kind of soft linear boundaries at the decision surface
 
@@ -210,9 +217,6 @@ Prediction files generator for assignment submission code
 ============
 
 ```{r}
-n=0
-x=0
-i=0
 pml_write_files = function(x){
   n = length(x)
   for(i in 1:n){
@@ -221,7 +225,7 @@ pml_write_files = function(x){
   }
 }
 
-pml_write_files(model_predictions2)
+pml_write_files(Final_Prediction)
 ```
 
 Reference
