@@ -21,6 +21,119 @@ https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
 
 The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. 
 
+Download both training dataset :-
+```{r}
+
+set.seed(11111)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+library(randomForest)
+
+curdir <-getwd()
+file.url<-'http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv'
+download.file(file.url,destfile=paste(curdir,'/pml-training.csv',sep=""))
+
+curdir <-getwd()
+file.url<-'http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv'
+download.file(file.url,destfile=paste(curdir,'/pml-testing.csv',sep=""))
+
+```
+
+Load both dataset :-
+
+```{r}
+train <- read.csv(paste(curdir,'/pml-training.csv',sep=""),na.strings=c("NA","#DIV/0!",""))
+test <-read.csv(paste(curdir,'/pml-testing.csv',sep=""),na.strings=c("NA","#DIV/0!",""))
+```
+
+
+Cheking the dimension of training and test dataset :-
+
+```{r}
+dim(train)
+dim(test)
+```
+
+Checking the columns which have all missing values
+
+```{r}
+train<-train[,colSums(is.na(train)) == 0]
+test <-test[,colSums(is.na(test)) == 0]
+```
+
+We remove 6 of the variables which is irrelevant like :-
+
+a)  user_name
+
+b)  raw_timestamp_part_1
+
+c)  raw_timestamp_part_2
+
+d)  cvtd_timestamp
+
+e)  new_window
+
+f)  num_window 
+
+
+which resides on the column 1-7.
+
+```{r}
+train <-train[,-c(1:7)]
+test <-test[,-c(1:7)]
+```
+
+Check again the dimension
+
+```{r}
+dim(train)
+dim(test)
+```
+
+Now we obtain the several rows to preview
+
+```{r}
+head(train)
+head(test)
+```
+
+In order to run cross-validation , the training dataset need to partition into 2 sets . We set the 1st partition for training dataset to 75% and test dataset to 25%. Training dataset contains 53 variables with 19622 obs and test dataset contains 53 variables with 20 obs.
+
+This will do the randomize sub-sampling without replacement 
+
+
+```{r}
+PartTrain <- createDataPartition(y=train$classe, p=0.75, list=FALSE)
+train_part <- train[PartTrain, ]; 
+test_part <- train[-PartTrain, ]
+dim(train_part)
+dim(test_part)
+
+```
+
+Visualization
+============
+We try to plot into the histogram to see the trending frequency of each sub-training & test dataset by comparing with each other. The variable classe contains 5 levels which is A,B,C,D & E
+
+
+```{r}
+plot(train_part$classe, col="lightgreen", 
+main="( train_part ) - Classe vs. Frequency", 
+xlab="Classe", ylab="Frequency")
+```
+
+The graph above shows that A ~ 4000x occurrences is most frequent while D is the lest frequent ~ 2500x occurrences
+
+
+Decision Tree
+============
+We try to plot
+
+
+
 Reference
 ============
 Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
